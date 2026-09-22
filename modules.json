@@ -1,0 +1,21 @@
+{
+  "$comment": "目前掛載模組的手動清單。要不要改成動態載入見 docs/plugin-contract.md 的開放問題 1。",
+  "modules": [
+    {
+      "id": "email-assist",
+      "name": "Gmail 整理助手",
+      "description": "定時檢查 Gmail,用 AI 找出多餘的信件,經審核後移到垃圾桶或退訂。",
+      "repo": "../email-assist",
+      "frontend": {
+        "type": "flutter",
+        "path": "../email-assist/app",
+        "entrypoint": "Shell",
+        "import": "package:email_assist/ui/shell.dart"
+      },
+      "backend": {
+        "managed_by": "module",
+        "note": "框架不負責啟動/管理這個模組的後端,照 ../email-assist/README.md 自行啟動。"
+      }
+    }
+  ]
+}
