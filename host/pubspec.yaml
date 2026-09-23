@@ -36,9 +36,13 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Modules (per docs/plugin-contract.md + modules.json), same-stack (Flutter) embedding via
-  # path dependency: import the module's `Shell` widget, no other integration code needed.
+  # a git dependency: import the module's `Shell` widget, no other integration code needed.
+  # pub fetches this into its own cache (~/.pub-cache/git/) at `pub get` time — no assumption
+  # about email-assist being checked out as a sibling directory.
   email_assist:
-    path: ../../email-assist/app
+    git:
+      url: https://github.com/klyvechen/email-assist.git
+      path: app
 
 dev_dependencies:
   flutter_test:

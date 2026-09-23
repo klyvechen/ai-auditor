@@ -52,9 +52,11 @@ packages:
   email_assist:
     dependency: "direct main"
     description:
-      path: "../../email-assist/app"
-      relative: true
-    source: path
+      path: app
+      ref: HEAD
+      resolved-ref: "4fb92db2d1d2358596a5373cad6e5313c2203344"
+      url: "https://github.com/klyvechen/email-assist.git"
+    source: git
     version: "1.0.0+1"
   fake_async:
     dependency: transitive
