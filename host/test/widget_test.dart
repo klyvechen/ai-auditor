@@ -57,6 +57,6 @@ void main() {
 
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    expect(find.text('AI-Auditor'), findsOneWidget); // back on the module list
+    expect(find.text('AuditAmigo AI'), findsOneWidget); // back on the module list (host header)
   });
 }

@@ -15,9 +15,39 @@ class AiAuditorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI-Auditor',
+      title: 'AuditAmigo AI',
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: const HostHome(),
+    );
+  }
+}
+
+/// Cross-module banner: logo + product name, top-left. Shown on the module picker / wide layout
+/// only — a module taking over fullscreen (the mobile shell's pushed route) intentionally does
+/// not get this, per docs/plugin-contract.md's "模組內容佔滿全螢幕".
+///
+/// No real logo asset yet — [Icons.shield_moon_outlined] is a placeholder. Swap the `Icon` below
+/// for an `Image.asset(...)` once there's an actual logo file (register it under `flutter:
+/// assets:` in pubspec.yaml first).
+class _HostHeader extends StatelessWidget implements PreferredSizeWidget {
+  const _HostHeader();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      centerTitle: false,
+      titleSpacing: 16,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.shield_moon_outlined, size: 26),
+          const SizedBox(width: 10),
+          Text('AuditAmigo AI', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -39,19 +69,24 @@ class _HostHomeState extends State<HostHome> {
   Widget build(BuildContext context) {
     final modules = hostModules;
     if (modules.isEmpty) {
-      return const Scaffold(body: Center(child: Text('尚未掛載任何模組')));
+      return const Scaffold(appBar: _HostHeader(), body: Center(child: Text('尚未掛載任何模組')));
     }
 
     final wide = MediaQuery.sizeOf(context).width >= kWideLayoutBreakpoint;
-    return wide ? _WideShell(modules: modules, selectedIndex: _selectedIndex, onSelect: (i) => setState(() => _selectedIndex = i)) : _ModuleListPage(modules: modules);
+    return Scaffold(
+      appBar: const _HostHeader(),
+      body: wide
+          ? _WideBody(modules: modules, selectedIndex: _selectedIndex, onSelect: (i) => setState(() => _selectedIndex = i))
+          : _ModuleListBody(modules: modules),
+    );
   }
 }
 
 /// Desktop/tablet: a side rail lists modules, the content area holds whichever `Shell` is
 /// selected. The framework does nothing beyond swapping the widget in `Expanded` — this is the
 /// literal `Widget content = const Shell();` example from the contract's "嵌入方式" section.
-class _WideShell extends StatelessWidget {
-  const _WideShell({required this.modules, required this.selectedIndex, required this.onSelect});
+class _WideBody extends StatelessWidget {
+  const _WideBody({required this.modules, required this.selectedIndex, required this.onSelect});
 
   final List<HostModule> modules;
   final int selectedIndex;
@@ -61,53 +96,49 @@ class _WideShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final index = selectedIndex.clamp(0, modules.length - 1);
     final selected = modules[index];
-    return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: index,
-            onDestinationSelected: onSelect,
-            labelType: NavigationRailLabelType.all,
-            destinations: [
-              for (final m in modules) NavigationRailDestination(icon: Icon(m.icon), label: Text(m.name)),
-            ],
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(child: Builder(builder: selected.builder)),
-        ],
-      ),
+    return Row(
+      children: [
+        NavigationRail(
+          selectedIndex: index,
+          onDestinationSelected: onSelect,
+          labelType: NavigationRailLabelType.all,
+          destinations: [
+            for (final m in modules) NavigationRailDestination(icon: Icon(m.icon), label: Text(m.name)),
+          ],
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(child: Builder(builder: selected.builder)),
+      ],
     );
   }
 }
 
-/// Phone: pick a module from a plain list, then its `Shell` takes over the whole screen.
+/// Phone: pick a module from a plain list, then its `Shell` takes over the whole screen (no host
+/// header on that pushed page — see `_HostHeader`'s doc comment).
 ///
 /// No back button is added by hand — the module's own `Scaffold`/`AppBar` (e.g. email-assist's
 /// `ShellContent`) already renders one automatically once it's pushed onto a route that can pop,
 /// which is standard Flutter `AppBar` behavior. That keeps this page at zero module-specific
 /// code, matching the contract's "no extra integration cost" bar.
-class _ModuleListPage extends StatelessWidget {
-  const _ModuleListPage({required this.modules});
+class _ModuleListBody extends StatelessWidget {
+  const _ModuleListBody({required this.modules});
 
   final List<HostModule> modules;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('AI-Auditor')),
-      body: ListView.separated(
-        itemCount: modules.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (context, i) {
-          final m = modules[i];
-          return ListTile(
-            leading: Icon(m.icon),
-            title: Text(m.name),
-            subtitle: Text(m.description),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: m.builder)),
-          );
-        },
-      ),
+    return ListView.separated(
+      itemCount: modules.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final m = modules[i];
+        return ListTile(
+          leading: Icon(m.icon),
+          title: Text(m.name),
+          subtitle: Text(m.description),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: m.builder)),
+        );
+      },
     );
   }
 }
