@@ -26,9 +26,6 @@ class AiAuditorApp extends StatelessWidget {
 /// only — a module taking over fullscreen (the mobile shell's pushed route) intentionally does
 /// not get this, per docs/plugin-contract.md's "模組內容佔滿全螢幕".
 ///
-/// No real logo asset yet — [Icons.shield_moon_outlined] is a placeholder. Swap the `Icon` below
-/// for an `Image.asset(...)` once there's an actual logo file (register it under `flutter:
-/// assets:` in pubspec.yaml first).
 class _HostHeader extends StatelessWidget implements PreferredSizeWidget {
   const _HostHeader();
 
@@ -43,7 +40,7 @@ class _HostHeader extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.shield_moon_outlined, size: 26),
+          Image.asset('assets/logo_icon.png', height: 32),
           const SizedBox(width: 10),
           Text('AuditAmigo AI', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
         ],
