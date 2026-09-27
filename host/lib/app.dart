@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'auth/auth_scope.dart';
 import 'auth/google_auth.dart';
+import 'auth/google_auth_check_page.dart';
 import 'modules/host_module.dart';
 import 'modules/registry.dart';
 
@@ -53,7 +55,18 @@ class _HostHeader extends StatelessWidget implements PreferredSizeWidget {
           Text('AuditAmigo AI', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
         ],
       ),
-      actions: const [_AccountMenu(), SizedBox(width: 8)],
+      actions: [
+        if (kDebugMode)
+          IconButton(
+            tooltip: 'Google 登入測試(僅 debug 版)',
+            icon: const Icon(Icons.bug_report_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => GoogleAuthCheckPage(auth: AuthScope.maybeGoogleOf(context))),
+            ),
+          ),
+        const _AccountMenu(),
+        const SizedBox(width: 8),
+      ],
     );
   }
 }

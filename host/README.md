@@ -52,7 +52,9 @@ flutter run -d emulator-5554 --dart-define-from-file=dart_defines.json   # 換�
 
 登入是**按需觸發**的:進框架不會要求登入,模組用到 Google 時才會呼叫。登入後右上角橫幅會出現帳號頭像(選單有「登出」)。設計見 [`../docs/plugin-contract.md`](../docs/plugin-contract.md) 第 6 點。
 
-- `dart_defines.json` 只放 **Web 應用程式用戶端 ID**(公開值,識別「這個 app」,不是使用者)。**用戶端密鑰(client secret)不放這裡、也不進 repo**,只會放在模組後端的環境變數。
+- 先 `cp dart_defines.example.json dart_defines.json`,再填入 **「Web 應用程式」型用戶端**的 ID(公開值,識別「這個 app」,不是使用者)。`dart_defines.json` 已被 `.gitignore` 排除,不會進 repo。
+- **一定要是「Web 應用程式」型**,不能用「電腦版應用程式(桌面)」型的 ID:桌面型不能登記 JavaScript 來源,Chrome 登入會失敗。用戶端類型建立後無法更改,一個 ID 只對應一個用戶端。email-assist 後端的 `credentials.json` 是桌面型,**不是**這個。
+- **用戶端密鑰(client secret)不放這裡、也不進 repo**,只會放在模組後端的環境變數。
 - 沒帶 `--dart-define-from-file` 時 Google 登入不可用(其他功能不受影響)。
 - 需要在 Google Cloud Console 完成:Web 用戶端(登記 `http://localhost:5000` 為已授權 JavaScript 來源)、Android 用戶端(套件名稱 `com.klyve.ai_auditor` + 該機器的 debug SHA-1)、把要登入的信箱加進 OAuth 同意畫面的測試使用者。
 - 目前只支援 **Web 與 Android**。iOS 需要另外設定(Info.plist 的 `GIDClientID` 與 URL scheme),尚未做。
