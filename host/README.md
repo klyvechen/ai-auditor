@@ -38,15 +38,27 @@ flutter devices
 再照平台啟動：
 
 ```bash
-# Web（Chrome）
-flutter run -d chrome
+# Web（Chrome）— port 要固定,因為 Google 用戶端登記的「已授權 JavaScript 來源」是 http://localhost:5000
+flutter run -d chrome --web-port=5000 --dart-define-from-file=dart_defines.json
 
-# iOS 模擬器
+# iOS 模擬器（Google 登入尚未支援 iOS,見下方）
 flutter run -d "iPhone 15"        # 換成 flutter devices 列出的實際名稱/ID
 
 # Android 模擬器 / 實機
-flutter run -d emulator-5554      # 換成 flutter devices 列出的實際 ID
+flutter run -d emulator-5554 --dart-define-from-file=dart_defines.json   # 換成 flutter devices 列出的實際 ID
 ```
+
+## Google 登入
+
+登入是**按需觸發**的:進框架不會要求登入,模組用到 Google 時才會呼叫。登入後右上角橫幅會出現帳號頭像(選單有「登出」)。設計見 [`../docs/plugin-contract.md`](../docs/plugin-contract.md) 第 6 點。
+
+- `dart_defines.json` 只放 **Web 應用程式用戶端 ID**(公開值,識別「這個 app」,不是使用者)。**用戶端密鑰(client secret)不放這裡、也不進 repo**,只會放在模組後端的環境變數。
+- 沒帶 `--dart-define-from-file` 時 Google 登入不可用(其他功能不受影響)。
+- 需要在 Google Cloud Console 完成:Web 用戶端(登記 `http://localhost:5000` 為已授權 JavaScript 來源)、Android 用戶端(套件名稱 `com.klyve.ai_auditor` + 該機器的 debug SHA-1)、把要登入的信箱加進 OAuth 同意畫面的測試使用者。
+- 目前只支援 **Web 與 Android**。iOS 需要另外設定(Info.plist 的 `GIDClientID` 與 URL scheme),尚未做。
+- 測試中狀態的 `gmail.modify` refresh token 約 7 天過期,需要重新授權。
+
+**目前這個 host 只提供登入本身**:email-assist 的 `Shell` 還沒有接收身份的參數,要等它那邊對接後,模組才會實際使用這個登入。
 
 ## 連線到本機後端時的位址對照
 
