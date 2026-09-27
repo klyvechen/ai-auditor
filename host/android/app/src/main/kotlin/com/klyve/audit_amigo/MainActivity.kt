@@ -1,4 +1,4 @@
-package com.klyve.ai_auditor
+package com.klyve.audit_amigo
 
 import io.flutter.embedding.android.FlutterActivity
 
