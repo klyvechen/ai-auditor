@@ -38,6 +38,34 @@
   - 知道怎麼啟動/連到這個模組的前端 UI(嵌入 widget,或未來若技術棧不同則開子視窗/webview)。
   - **不需要**管模組的後端要怎麼跑——那是模組自己的 repo 負責(例如各自 README 寫怎麼 `uv run <module> serve`)。框架文件最多提醒使用者「先照模組自己的 README 把後端跑起來」。
 
+## 6. 身份與登入:按需觸發、按服務分開,模組只透過可選參數取得
+
+- **不做「整個 AI-Auditor 的登入」。** 模組不一定都是 Google 服務,進框架時不要求登入;使用者用到需要某服務(例如 Google)的功能時,才觸發該服務的登入。登入狀態**按服務(provider)分開**。
+- **登入與授權是兩步。** 登入 = 你是誰;授權 = 這個模組能做什麼(scope,例如 `gmail.modify`)。授權用到才要(增量授權),不要一開始就要走所有範圍。
+- **哪些共用、哪些不共用:**
+  - 框架負責(`host/lib/auth/`):各平台登入細節、OAuth 用戶端註冊、目前選的帳號(登入狀態)、登出。
+  - **不共用**:服務的權限憑證(例如 Gmail refresh token)由各模組**後端**自己保管,框架不保存。理由是最小權限,共用憑證會讓任何一個模組後端被攻破就拿到所有模組的權限。
+- **模組怎麼取得身份:`Shell` 的可選參數**(Dart 函式型別與 record,不需要共用套件)。以 Google 為例:
+
+```dart
+const Shell({
+  super.key,
+  // 回傳「現在有效的」ID token;未登入回 null。模組每次打後端前呼叫,由框架負責刷新(約 1 小時過期)
+  Future<String?> Function()? googleIdToken,
+  // 模組「用到才呼叫」:必要時觸發登入與增量授權。使用者取消回 null。
+  // idToken 與 serverAuthCode 都可能為 null(依平台),模組必須處理並退回自己的機制
+  Future<({String? idToken, String? serverAuthCode})?> Function(List<String> scopes)? requestGoogleAccess,
+});
+```
+
+- **規則**:參數一律可選;`const Shell()` 仍須可用;沒有宿主提供身份時(模組單獨跑),模組退回自己的憑證機制(例如固定 API token)。框架端只在 `registry.dart` 傳入這幾個 callback,不寫任何模組專屬的登入邏輯。
+- **登出 ≠ 中斷連結。** 登出只清框架裡的登入狀態,模組後端手上的 refresh token 仍在,排程照跑。要真正收回權限需要另一個明確的「中斷連結」動作(向服務端撤銷並刪除後端保存的憑證),由模組自己的設定頁提供。
+- **已知平台限制**(2026-09 對 `google_sign_in` 7.2.0 原始碼查證,尚未在本專案實機驗證):
+  - `serverClientId` 是整個 App 初始化一次的參數,Android 必填,Web 不支援(Web 全部用單一 Web 用戶端)。因此 SDK 發出的 ID token 的 `aud` 與 server auth code 都對應框架**這一個** Web 用戶端,無法「每個模組一個用戶端」;要用該 auth code 換 refresh token,模組後端需要那個 Web 用戶端的 secret。
+  - Web 沒有程式化的 `authenticate()`,登入要用 Google 提供的按鈕或 One Tap;server auth code 透過使用者手勢觸發的 popup 取得。
+  - server auth code 不保證能在任意時間重新取得,模組後端應在第一次取得時就換成 refresh token 保管。
+  - 用戶端 secret **只能出現在模組後端的環境變數**,不進框架、不進 App、不進 repo。
+
 ## 嵌入方式
 
 - **同技術棧(Flutter → Flutter)**:模組的 `Shell` 當作套件,用 path dependency 直接 `import` 進框架,同進程渲染,沒有額外整合成本。這是目前(email-assist)採用的路徑。
@@ -61,10 +89,12 @@ Widget content = const Shell();
 - [ ] 不在前端保存真正的服務金鑰,只存「自己後端的連線資訊」。
 - [ ] 前端與後端是兩個獨立專案,只靠 HTTP(+ token)溝通;框架不需要讀懂後端邏輯。
 - [ ] 在 [`modules.json`](../modules.json) 登記一筆(id、顯示名稱、怎麼找到這個模組)。
+- [ ] (需要登入某服務時)用第 6 點的**可選**身份參數取得身份,不自建全域登入;沒有宿主提供時退回自己的憑證機制,`const Shell()` 仍須可用。
 
 ## 已拍板的決定
 
 - **模組怎麼註冊**:目前由 AI-Auditor **手動維護** [`modules.json`](../modules.json)。等有第二個模組要掛進來,再評估要不要改成模組自帶 manifest 讓框架自動掃描/發現。
+- **登入怎麼做(2026-09-27)**:按需、按服務分開,不做全域登入;模組只透過 `Shell` 的可選參數取得身份(見第 6 點)。分三步:先做 Spike 驗證平台能力(已用原始碼查證,實機驗證待 Google 用戶端建好),再做階段一(按需 Google 登入 + 身份憑證 + 模組後端驗證與信箱允許名單),最後階段二(增量授權 + auth code 交給模組後端 + 中斷連結)。
 - **Shell 自給自足怎麼做**:初始化包裝邏輯包進 `Shell` 本身(不是另開一個 `EmailAssistModule` 類別),`import` 路徑與 `entrypoint: "Shell"` 都不用改。email-assist 已經照這個方向改完並補上驗證測試,見上面第 1 點。
 
 ## 尚未決定的問題
@@ -76,3 +106,7 @@ Widget content = const Shell();
    - **追責**:provider(Gmail/AI 服務商等)看到的用量、限流、停用都是「框架」這個身份,分不出是哪個模組造成的——框架需要自己做一層 per-模組的用量記錄/標記,不然某模組把配額用爆,框架不知道該斷誰。
    - **炸半邊**:如果所有補位模組真的共用同一把 key,一個模組濫用導致這把 key 被 provider 停權,會連坐所有用這把 key 的模組,風險等級跟「各自獨立金鑰」完全不同。如果 provider 支援一個帳號開多把 key,應該考慮「每個補位模組各發一把獨立 key(都算在框架帳下)」,把炸掉的範圍限制在單一模組,而不是真的所有人共用同一把。
    - **認證機制本身就是新的祕密**:模組後端要怎麼向框架證明身份、換到共用金鑰,這個認證憑證本身也需要考慮輪替、撤銷、外洩處理——它是框架層新增的攻擊面,不因為是「補位方案」就比較不重要。
+5. **登入用的 OAuth 用戶端 secret 怎麼處理**(新增,見第 6 點):`google_sign_in` 的 `serverClientId` 是 App 全域一個,所以 SDK 取得的 auth code 只能用框架那一個 Web 用戶端的 secret 換 refresh token。選項:
+   - **B. 共用該 Web 用戶端**:secret 只放需要的模組後端的環境變數。目前只有 email-assist 一個模組會用,實際成本為零;之後有第二個 Google 模組時,secret 就會散在多個後端(多一個要保管、輪替的祕密)。
+   - **C. 模組後端自己走標準 Web server OAuth**(各自用戶端與 secret,隔離最好):host 只負責開瀏覽器。缺點是 redirect URI 需 HTTPS 或 localhost,手機實機連 Mac 區網 IP 的本機後端會卡住。
+   - 傾向 v1 用 B,等第二個 Google 模組出現再重評;`requestGoogleAccess` 回傳的 `serverAuthCode` 本來就可為 null,模組之後改走 C 不需要改介面。尚未拍板。
