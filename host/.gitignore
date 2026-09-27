@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local Google client ID: copy dart_defines.example.json to this name and fill it in
+dart_defines.json
