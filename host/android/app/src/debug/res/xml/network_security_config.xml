@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-build-only override: allow cleartext HTTP to any host, so `flutter run` on a real
+     device can reach a module's local backend on whatever LAN IP the dev machine currently has,
+     without hardcoding it. Release builds still use the restrictive
+     src/main/res/xml/network_security_config.xml (127.0.0.1/10.0.2.2/localhost only). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

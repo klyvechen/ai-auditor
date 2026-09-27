@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'auth/auth_scope.dart';
+import 'auth/google_auth.dart';
 import 'modules/host_module.dart';
 import 'modules/registry.dart';
 
@@ -10,14 +12,20 @@ import 'modules/registry.dart';
 const double kWideLayoutBreakpoint = 700;
 
 class AiAuditorApp extends StatelessWidget {
-  const AiAuditorApp({super.key});
+  const AiAuditorApp({super.key, this.googleAuth});
+
+  /// Null when Google sign-in isn't configured (and in most widget tests).
+  final GoogleAuthService? googleAuth;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AuditAmigo AI',
-      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
-      home: const HostHome(),
+    return AuthScope(
+      service: googleAuth,
+      child: MaterialApp(
+        title: 'AuditAmigo AI',
+        theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+        home: const HostHome(),
+      ),
     );
   }
 }
@@ -44,6 +52,38 @@ class _HostHeader extends StatelessWidget implements PreferredSizeWidget {
           const SizedBox(width: 10),
           Text('AuditAmigo AI', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
         ],
+      ),
+      actions: const [_AccountMenu(), SizedBox(width: 8)],
+    );
+  }
+}
+
+/// Signed-in Google account (avatar + sign-out). Renders nothing until someone has signed in:
+/// login is triggered on demand by a module, never forced from the header.
+class _AccountMenu extends StatelessWidget {
+  const _AccountMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AuthScope.maybeGoogleOf(context);
+    final user = auth?.user;
+    if (auth == null || user == null) return const SizedBox.shrink();
+
+    final initial = (user.displayName ?? user.email).characters.first.toUpperCase();
+    return PopupMenuButton<String>(
+      tooltip: user.email,
+      onSelected: (v) {
+        if (v == 'signout') auth.signOut();
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem<String>(enabled: false, child: Text(user.email)),
+        const PopupMenuItem<String>(value: 'signout', child: Text('登出')),
+      ],
+      child: CircleAvatar(
+        radius: 16,
+        backgroundImage: user.photoUrl == null ? null : NetworkImage(user.photoUrl!),
+        onBackgroundImageError: user.photoUrl == null ? null : (_, _) {},
+        child: Text(initial),
       ),
     );
   }
