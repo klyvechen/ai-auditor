@@ -71,6 +71,28 @@ class GoogleAuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Claims of the current ID token (unverified, for display/diagnostics only).
+  Map<String, dynamic>? get idTokenClaims {
+    final token = _account?.authentication.idToken;
+    return token == null ? null : jwtPayload(token);
+  }
+
+  /// Whether this platform can start sign-in from code. False on Web, where the sign-in button has
+  /// to be Google's own rendered button. Only meaningful after [init].
+  bool get canSignInProgrammatically => isConfigured && _signIn.supportsAuthenticate();
+
+  /// Programmatic sign-in (Android). No-op where unsupported; returns quietly if the user cancels.
+  Future<void> signIn() async {
+    await init();
+    if (!canSignInProgrammatically) return;
+    try {
+      await _signIn.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled || e.code == GoogleSignInExceptionCode.interrupted) return;
+      rethrow;
+    }
+  }
+
   String? _validIdToken() {
     final token = _account?.authentication.idToken;
     return token != null && jwtStillValid(token) ? token : null;

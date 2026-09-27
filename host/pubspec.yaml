@@ -44,6 +44,7 @@ dependencies:
       url: https://github.com/klyvechen/email-assist.git
       path: app
   google_sign_in: ^7.2.0
+  google_sign_in_web: ^1.1.3
 
 dev_dependencies:
   flutter_test:

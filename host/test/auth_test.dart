@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:ai_auditor/app.dart';
 import 'package:ai_auditor/auth/google_auth.dart';
+import 'package:ai_auditor/auth/google_auth_check_page.dart';
 import 'package:ai_auditor/auth/jwt.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,13 +14,21 @@ String _jwt(Map<String, Object?> payload) {
 }
 
 class _FakeGoogleAuth extends GoogleAuthService {
-  _FakeGoogleAuth(this._user) : super(webClientId: '');
+  _FakeGoogleAuth(this._user, {String clientId = 'test.apps.googleusercontent.com', this.claims})
+      : super(webClientId: clientId);
 
   GoogleUser? _user;
+  final Map<String, dynamic>? claims;
   int signOuts = 0;
 
   @override
   GoogleUser? get user => _user;
+
+  @override
+  Map<String, dynamic>? get idTokenClaims => claims;
+
+  @override
+  Future<void> init() async {}
 
   @override
   Future<void> signOut() async {
@@ -49,6 +58,40 @@ void main() {
       expect(jwtExpiry('not-a-jwt'), isNull);
       expect(jwtStillValid('a.b.c'), isFalse);
       expect(jwtStillValid(_jwt({'no': 'exp'})), isFalse);
+    });
+  });
+
+  group('check page', () {
+    testWidgets('says so when Google is not configured', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: GoogleAuthCheckPage(auth: null)));
+      expect(find.textContaining('未設定'), findsOneWidget);
+    });
+
+    testWidgets('shows aud match and remaining lifetime for a signed-in user', (tester) async {
+      const clientId = 'abc.apps.googleusercontent.com';
+      final expSecs = DateTime.now().add(const Duration(minutes: 42)).millisecondsSinceEpoch ~/ 1000;
+      final auth = _FakeGoogleAuth(
+        const GoogleUser(email: 'klyve@example.com', displayName: 'Klyve'),
+        clientId: clientId,
+        claims: {'aud': clientId, 'email_verified': true, 'exp': expSecs},
+      );
+      await tester.pumpWidget(MaterialApp(home: GoogleAuthCheckPage(auth: auth)));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('klyve@example.com'), findsOneWidget);
+      expect(find.text('✓ 是'), findsOneWidget);
+      expect(find.textContaining('分鐘'), findsOneWidget);
+    });
+
+    testWidgets('flags an audience that does not match the configured client id', (tester) async {
+      final auth = _FakeGoogleAuth(
+        const GoogleUser(email: 'a@b.c'),
+        clientId: 'abc.apps.googleusercontent.com',
+        claims: {'aud': 'someone-else', 'email_verified': true, 'exp': 0},
+      );
+      await tester.pumpWidget(MaterialApp(home: GoogleAuthCheckPage(auth: auth)));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('✗ 否'), findsOneWidget);
     });
   });
 
