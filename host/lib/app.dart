@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'auth/auth_scope.dart';
 import 'auth/google_auth.dart';
 import 'auth/google_auth_check_page.dart';
+import 'auth/google_sign_in_button.dart';
 import 'modules/host_module.dart';
 import 'modules/registry.dart';
 
@@ -157,7 +158,7 @@ class _WideBody extends StatelessWidget {
           ],
         ),
         const VerticalDivider(width: 1),
-        Expanded(child: Builder(builder: selected.builder)),
+        Expanded(child: _ModuleEntryPoint(module: selected)),
       ],
     );
   }
@@ -186,9 +187,76 @@ class _ModuleListBody extends StatelessWidget {
           leading: Icon(m.icon),
           title: Text(m.name),
           subtitle: Text(m.description),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: m.builder)),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => _ModuleEntryPoint(module: m))),
         );
       },
+    );
+  }
+}
+
+/// The login gate (docs/plugin-contract.md #6: on demand, per module — not a global login).
+///
+/// Renders [HostModule.builder] directly unless the module opted into [HostModule.requiresGoogle]
+/// *and* Google sign-in is actually configured; in that combination, nobody signed in means a
+/// login prompt takes the module's place until sign-in succeeds, at which point this rebuilds
+/// (via [ListenableBuilder] on the auth service) and swaps in the real module. Gmail authorization
+/// itself is unchanged for now — still the module's own backend-driven flow (contract phase 2 is
+/// what replaces that).
+class _ModuleEntryPoint extends StatelessWidget {
+  const _ModuleEntryPoint({required this.module});
+
+  final HostModule module;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AuthScope.maybeGoogleOf(context);
+    if (!module.requiresGoogle || auth == null || !auth.isConfigured) {
+      return Builder(builder: module.builder);
+    }
+    return ListenableBuilder(
+      listenable: auth,
+      builder: (context, _) => auth.user != null ? Builder(builder: module.builder) : _GoogleLoginGate(module: module, auth: auth),
+    );
+  }
+}
+
+class _GoogleLoginGate extends StatelessWidget {
+  const _GoogleLoginGate({required this.module, required this.auth});
+
+  final HostModule module;
+  final GoogleAuthService auth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(module.name)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(module.icon, size: 48, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 16),
+                Text(
+                  '使用「${module.name}」需要先登入 Google',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 24),
+                FutureBuilder<void>(
+                  future: auth.init(),
+                  builder: (context, snap) => snap.connectionState == ConnectionState.done
+                      ? buildGoogleSignInButton(auth)
+                      : const CircularProgressIndicator(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
