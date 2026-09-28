@@ -95,6 +95,34 @@ void main() {
     });
   });
 
+  group('module wiring', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    Future<void> pump(WidgetTester tester, GoogleAuthService? auth) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(AiAuditorApp(googleAuth: auth));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('no Google configured: the module keeps its own API Token field', (tester) async {
+      await pump(tester, null);
+      expect(find.text('API Token'), findsOneWidget);
+      expect(find.text('以 Google 帳號登入'), findsNothing);
+    });
+
+    testWidgets('Google configured: the host hands over identity, so the token field goes away', (tester) async {
+      await pump(tester, _FakeGoogleAuth(null));
+      // Treated as configured, so the module opens on its first tab; go to its Settings tab.
+      await tester.tap(find.widgetWithText(Tab, '設定'));
+      await tester.pumpAndSettle();
+      expect(find.text('以 Google 帳號登入'), findsOneWidget);
+      expect(find.text('API Token'), findsNothing);
+    });
+  });
+
   group('header account menu', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 

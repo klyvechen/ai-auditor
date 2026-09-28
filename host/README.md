@@ -56,7 +56,7 @@ flutter run -d emulator-5554 --dart-define-from-file=dart_defines.json   # 換�
 - **一定要是「Web 應用程式」型**,不能用「電腦版應用程式(桌面)」型的 ID:桌面型不能登記 JavaScript 來源,Chrome 登入會失敗。用戶端類型建立後無法更改,一個 ID 只對應一個用戶端。email-assist 後端的 `credentials.json` 是桌面型,**不是**這個。
 - **用戶端密鑰(client secret)不放這裡、也不進 repo**,只會放在模組後端的環境變數。
 - 沒帶 `--dart-define-from-file` 時 Google 登入不可用(其他功能不受影響)。
-- 需要在 Google Cloud Console 完成:Web 用戶端(登記 `http://localhost:5000` 為已授權 JavaScript 來源)、Android 用戶端(套件名稱 `com.klyve.ai_auditor` + 該機器的 debug SHA-1)、把要登入的信箱加進 OAuth 同意畫面的測試使用者。
+- 需要在 Google Cloud Console 完成:Web 用戶端(登記 `http://localhost:5000` 為已授權 JavaScript 來源)、Android 用戶端(套件名稱 `com.klyve.audit_amigo` + 該機器的 debug SHA-1)、把要登入的信箱加進 OAuth 同意畫面的測試使用者。
 - 目前只支援 **Web 與 Android**。iOS 需要另外設定(Info.plist 的 `GIDClientID` 與 URL scheme),尚未做。
 - 測試中狀態的 `gmail.modify` refresh token 約 7 天過期,需要重新授權。
 
