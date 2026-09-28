@@ -4,6 +4,7 @@ import 'package:ai_auditor/app.dart';
 import 'package:ai_auditor/auth/google_auth.dart';
 import 'package:ai_auditor/auth/google_auth_check_page.dart';
 import 'package:ai_auditor/auth/jwt.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,6 +45,24 @@ class _FakeGoogleAuth extends GoogleAuthService {
 }
 
 void main() {
+  group('isConfigured is platform-aware', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('Android: web client ID alone is enough (no iOS client ID needed)', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(GoogleAuthService(webClientId: 'web-id').isConfigured, isTrue);
+      expect(GoogleAuthService(webClientId: '').isConfigured, isFalse);
+    });
+
+    test('iOS: needs both the web client ID and an iOS client ID', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(GoogleAuthService(webClientId: 'web-id').isConfigured, isFalse); // no iOS client ID
+      expect(GoogleAuthService(webClientId: '', iosClientId: 'ios-id').isConfigured, isFalse); // no web ID
+      expect(GoogleAuthService(webClientId: 'web-id', iosClientId: '').isConfigured, isFalse); // empty counts as absent
+      expect(GoogleAuthService(webClientId: 'web-id', iosClientId: 'ios-id').isConfigured, isTrue);
+    });
+  });
+
   group('jwt', () {
     final now = DateTime.utc(2026, 9, 27, 12);
     int secs(DateTime t) => t.millisecondsSinceEpoch ~/ 1000;

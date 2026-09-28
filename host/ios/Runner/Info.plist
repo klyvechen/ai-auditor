@@ -47,6 +47,24 @@
 			</dict>
 		</dict>
 	</dict>
+	<!-- Google Sign-In redirect handling. The client ID itself is passed in Dart code
+	     (GoogleAuthService, from dart_defines.json's GOOGLE_IOS_CLIENT_ID) rather than via
+	     GIDClientID here, but this URL scheme is required either way — it's not optional, and
+	     it's not something Dart config can supply. Not a secret (it's the iOS client ID with
+	     its domain segments reversed, e.g. "123-abc.apps.googleusercontent.com" becomes
+	     "com.googleusercontent.apps.123-abc"), safe to commit.
+	     TODO(klyve): replace once the iOS OAuth client exists — see host/README.md. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.REPLACE_WITH_REVERSED_IOS_CLIENT_ID</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

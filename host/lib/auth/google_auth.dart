@@ -21,18 +21,38 @@ typedef GoogleAccess = ({String? idToken, String? serverAuthCode});
 /// docs/plugin-contract.md #6. This holds identity only: Gmail credentials stay in the module's
 /// backend.
 ///
-/// The web client ID is app-global in `google_sign_in` (Android: `serverClientId`, Web: `clientId`).
+/// The web client ID is app-global in `google_sign_in` and used on every platform, just passed
+/// differently: Web takes it as `clientId`; Android needs no client ID in code at all (it
+/// identifies itself via package name + signing certificate) and only takes it as
+/// `serverClientId`; iOS needs *both* — its own iOS-type `clientId` (bound to the bundle ID) *and*
+/// `webClientId` as `serverClientId`, since unlike Android, iOS has no package/signature-based
+/// identification Google can check server-side.
 class GoogleAuthService extends ChangeNotifier {
-  GoogleAuthService({required this.webClientId, GoogleSignIn? signIn}) : _signIn = signIn ?? GoogleSignIn.instance;
+  GoogleAuthService({required this.webClientId, this.iosClientId, GoogleSignIn? signIn})
+      : _signIn = signIn ?? GoogleSignIn.instance;
 
   final String webClientId;
+
+  /// The iOS-type OAuth client ID (bound to the app's bundle ID in Google Cloud Console). Unused
+  /// on Web/Android.
+  final String? iosClientId;
+
   final GoogleSignIn _signIn;
 
   GoogleSignInAccount? _account;
   Future<void>? _init;
   StreamSubscription<GoogleSignInAuthenticationEvent>? _events;
 
-  bool get isConfigured => webClientId.isNotEmpty;
+  bool get _isIOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Web/Android just need [webClientId]. iOS additionally needs [iosClientId] — without it,
+  /// Google sign-in behaves as "not configured" on iOS specifically (same fallback as when nothing
+  /// is configured at all), even if Web/Android are already working.
+  bool get isConfigured {
+    if (webClientId.isEmpty) return false;
+    if (_isIOS) return iosClientId != null && iosClientId!.isNotEmpty;
+    return true;
+  }
 
   GoogleUser? get user {
     final a = _account;
@@ -45,7 +65,7 @@ class GoogleAuthService extends ChangeNotifier {
     if (!isConfigured) return;
     try {
       await _signIn.initialize(
-        clientId: kIsWeb ? webClientId : null,
+        clientId: kIsWeb ? webClientId : (_isIOS ? iosClientId : null),
         serverClientId: kIsWeb ? null : webClientId,
       );
       _events = _signIn.authenticationEvents.listen(_onEvent, onError: (Object _) {});
