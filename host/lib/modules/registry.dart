@@ -16,6 +16,7 @@ final List<HostModule> hostModules = [
     name: 'Gmail 整理助手',
     description: '定時檢查 Gmail,用 AI 找出多餘的信件,經審核後移到垃圾桶或退訂。',
     icon: Icons.mail_outline,
+    requiresGoogle: true,
     // Identity is optional (contract #6): when Google sign-in isn't configured the module gets no
     // callback and keeps using its own fixed API token, exactly as when it runs standalone.
     builder: (context) {

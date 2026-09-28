@@ -30,6 +30,11 @@ class _FakeGoogleAuth extends GoogleAuthService {
   @override
   Future<void> init() async {}
 
+  void signInAs(GoogleUser user) {
+    _user = user;
+    notifyListeners();
+  }
+
   @override
   Future<void> signOut() async {
     signOuts++;
@@ -113,8 +118,22 @@ void main() {
       expect(find.text('以 Google 帳號登入'), findsNothing);
     });
 
-    testWidgets('Google configured: the host hands over identity, so the token field goes away', (tester) async {
+    testWidgets('Google configured, not signed in: a login gate blocks the module (not an error state)', (tester) async {
       await pump(tester, _FakeGoogleAuth(null));
+      expect(find.text('使用「Gmail 整理助手」需要先登入 Google'), findsOneWidget);
+      expect(find.text('API Token'), findsNothing);
+      expect(find.text('以 Google 帳號登入'), findsNothing); // module itself never got a chance to build
+    });
+
+    testWidgets('signing in dismisses the gate and reveals the module with the token field gone', (tester) async {
+      final auth = _FakeGoogleAuth(null);
+      await pump(tester, auth);
+      expect(find.text('使用「Gmail 整理助手」需要先登入 Google'), findsOneWidget);
+
+      auth.signInAs(const GoogleUser(email: 'klyve@example.com'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('使用「Gmail 整理助手」需要先登入 Google'), findsNothing);
       // Treated as configured, so the module opens on its first tab; go to its Settings tab.
       await tester.tap(find.widgetWithText(Tab, '設定'));
       await tester.pumpAndSettle();

@@ -12,6 +12,7 @@ class HostModule {
     required this.description,
     required this.icon,
     required this.builder,
+    this.requiresGoogle = false,
   });
 
   final String id;
@@ -19,4 +20,11 @@ class HostModule {
   final String description;
   final IconData icon;
   final WidgetBuilder builder;
+
+  /// Whether entering this module should be gated on a Google sign-in first (see
+  /// docs/plugin-contract.md #6: on demand, per module — not a global login). When true and
+  /// Google is configured but nobody is signed in, the host shows a login prompt in place of
+  /// [builder] and only renders it once sign-in succeeds. Has no effect when Google sign-in isn't
+  /// configured at all, so the module behaves exactly as it does standalone.
+  final bool requiresGoogle;
 }
