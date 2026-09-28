@@ -54,7 +54,7 @@ packages:
     description:
       path: app
       ref: HEAD
-      resolved-ref: "5964e53cd1dab0bd1c2bd33717dbef415cbfa0f3"
+      resolved-ref: "4d298e0c757c017d455f40554f339ade4d353d4c"
       url: "https://github.com/klyvechen/email-assist.git"
     source: git
     version: "1.0.0+1"
