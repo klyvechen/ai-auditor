@@ -17,11 +17,17 @@ final List<HostModule> hostModules = [
     description: '定時檢查 Gmail,用 AI 找出多餘的信件,經審核後移到垃圾桶或退訂。',
     icon: Icons.mail_outline,
     requiresGoogle: true,
-    // Identity is optional (contract #6): when Google sign-in isn't configured the module gets no
-    // callback and keeps using its own fixed API token, exactly as when it runs standalone.
+    // Both are optional (contract #6): when Google sign-in isn't configured the module gets
+    // neither callback and keeps using its own fixed API token / desktop-browser Gmail flow,
+    // exactly as when it runs standalone. requestGoogleAccess is phase 2 — email-assist decides
+    // if/when to call it (and with which scopes) once it has identity; the host never calls it.
     builder: (context) {
       final google = AuthScope.maybeGoogleOf(context);
-      return email_assist.Shell(googleIdToken: google != null && google.isConfigured ? google.freshIdToken : null);
+      final ready = google != null && google.isConfigured;
+      return email_assist.Shell(
+        googleIdToken: ready ? google.freshIdToken : null,
+        requestGoogleAccess: ready ? google.requestAccess : null,
+      );
     },
   ),
 ];

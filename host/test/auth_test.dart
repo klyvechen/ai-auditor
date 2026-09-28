@@ -4,10 +4,22 @@ import 'package:ai_auditor/app.dart';
 import 'package:ai_auditor/auth/google_auth.dart';
 import 'package:ai_auditor/auth/google_auth_check_page.dart';
 import 'package:ai_auditor/auth/jwt.dart';
+import 'package:email_assist/ui/shell.dart' as email_assist;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// email-assist's `AppState` starts a `Timer.periodic` once it's given identity (for its Gmail
+/// connect-status poll), so `pumpAndSettle()` after that point never returns — the tree never
+/// stops scheduling frames. Pump a bounded number of frames instead; that's enough for the
+/// SharedPreferences/initial-refresh Futures to resolve, without waiting on a periodic timer that
+/// is module-internal behavior, not something host tests should drive anyway.
+Future<void> pumpBounded(WidgetTester tester, {int times = 10}) async {
+  for (var i = 0; i < times; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
 
 String _jwt(Map<String, Object?> payload) {
   String enc(Object o) => base64Url.encode(utf8.encode(json.encode(o))).replaceAll('=', '');
@@ -128,13 +140,17 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(AiAuditorApp(googleAuth: auth));
-      await tester.pumpAndSettle();
+      await pumpBounded(tester);
     }
 
     testWidgets('no Google configured: the module keeps its own API Token field', (tester) async {
       await pump(tester, null);
       expect(find.text('API Token'), findsOneWidget);
       expect(find.text('以 Google 帳號登入'), findsNothing);
+
+      final shell = tester.widget<email_assist.Shell>(find.byType(email_assist.Shell));
+      expect(shell.googleIdToken, isNull);
+      expect(shell.requestGoogleAccess, isNull);
     });
 
     testWidgets('Google configured, not signed in: a login gate blocks the module (not an error state)', (tester) async {
@@ -142,22 +158,25 @@ void main() {
       expect(find.text('使用「Gmail 整理助手」需要先登入 Google'), findsOneWidget);
       expect(find.text('API Token'), findsNothing);
       expect(find.text('以 Google 帳號登入'), findsNothing); // module itself never got a chance to build
+      expect(find.byType(email_assist.Shell), findsNothing); // host's gate stood in for it
     });
 
-    testWidgets('signing in dismisses the gate and reveals the module with the token field gone', (tester) async {
+    testWidgets('signing in dismisses the gate and hands the module both Google callbacks', (tester) async {
       final auth = _FakeGoogleAuth(null);
       await pump(tester, auth);
       expect(find.text('使用「Gmail 整理助手」需要先登入 Google'), findsOneWidget);
 
       auth.signInAs(const GoogleUser(email: 'klyve@example.com'));
-      await tester.pumpAndSettle();
+      await pumpBounded(tester);
 
       expect(find.text('使用「Gmail 整理助手」需要先登入 Google'), findsNothing);
-      // Treated as configured, so the module opens on its first tab; go to its Settings tab.
-      await tester.tap(find.widgetWithText(Tab, '設定'));
-      await tester.pumpAndSettle();
-      expect(find.text('以 Google 帳號登入'), findsOneWidget);
-      expect(find.text('API Token'), findsNothing);
+      // What happens next inside the module (its own Gmail-connect gate, tabs, etc.) is
+      // email-assist's own concern — including a Timer.periodic that never lets pumpAndSettle()
+      // return, so this deliberately doesn't drive that UI. Host's job ends at wiring both
+      // callbacks through correctly, which is checked directly on the Shell it built:
+      final shell = tester.widget<email_assist.Shell>(find.byType(email_assist.Shell));
+      expect(shell.googleIdToken, isNotNull);
+      expect(shell.requestGoogleAccess, isNotNull);
     });
   });
 
@@ -170,7 +189,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(AiAuditorApp(googleAuth: auth));
-      await tester.pumpAndSettle();
+      await pumpBounded(tester);
     }
 
     testWidgets('nothing is shown when signed out or not configured', (tester) async {
@@ -188,11 +207,11 @@ void main() {
       expect(find.text('K'), findsOneWidget);
 
       await tester.tap(find.byType(CircleAvatar));
-      await tester.pumpAndSettle();
+      await pumpBounded(tester);
       expect(find.text('klyve@example.com'), findsOneWidget);
 
       await tester.tap(find.text('登出'));
-      await tester.pumpAndSettle();
+      await pumpBounded(tester);
       expect(auth.signOuts, 1);
       expect(find.byType(CircleAvatar), findsNothing);
     });
