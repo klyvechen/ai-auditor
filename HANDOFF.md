@@ -56,4 +56,4 @@
 4. 跑 host 的 🐞 測試頁，**第一次真的用 Google 帳號登入**，確認 `aud` 相符。
 5. 端對端：點「Gmail 整理助手」→ 應該先看到登入閘門 → 登入後進模組 → 如果 Gmail 還沒連結,應該看到「連結 Gmail」的全螢幕提示 → 按下去測 `connectGmail()` 整條路。
 6. 都驗證過再請 klyve 合併 8 個 commit 進 `main`。
-7. `flutter analyze`/`flutter test` 這次暫停前沒有跑完確認(跑到一半背景化了,output 在 `/private/tmp/claude-502/-Users-klyve-prj-ai-ai-auditor--claude-worktrees-host-scaffold/43b7495d-3f11-4963-b153-decbd65eea59/tasks/b641eij09.output`，那個暫存目錄重開機後可能會消失，不確定)，重開後第一件事最好重跑一次確認沒有破壞。
+7. `flutter analyze` 暫停當下還在背景跑,**後來跑完了,exit code 0(通過)**。但只確認到 analyze,`flutter test` 沒有補跑,重開後建議補跑一次 `flutter test` 再繼續。
